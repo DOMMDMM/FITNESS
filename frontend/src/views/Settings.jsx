@@ -41,6 +41,7 @@ import { showsConnection, showsLocalLine } from '../components/SyncBanner.jsx'
 import BackupFolderRow, { useBackupFolder, autoBackupSubtitle } from '../components/BackupFolderRow.jsx'
 import { ServerSyncSection, KeptChangesRows, leaveServer, connectServer, passkeySignIn } from '../components/ServerSync.jsx'
 import { passwordOn, PasswordRow, openPasswordSignIn, openPasswordRegister } from '../components/PasswordAuth.jsx'
+import { SUPABASE } from '../lib/supabase-config.js'
 import { usePasskeys, PasskeysRow, DeviceLinkRow, openDeviceLinkRedeem } from '../components/Passkeys.jsx'
 import { Section, Row, SelectRow, Switch, Segmented, Button, TextField, SearchField } from '../components/ui.jsx'
 import { PAGES, ROOT_GROUPS, pageVisible, searchSettings, pageTrail } from './settings-pages.js'
@@ -92,7 +93,7 @@ export default function Settings({ page = null, find = null, via = null }) {
   const lang = effectiveLang(S, config)
   // This profile's passkeys and the code for another device (#95). A change to them is read back
   // here and by the password row, whose "Remove" depends on there being a passkey.
-  const passkeys = usePasskeys(!!user && !MOBILE && !DEMO && (page === 'account'))
+  const passkeys = usePasskeys(!!user && !MOBILE && !DEMO && !SUPABASE && (page === 'account'))
   const [credsV, setCredsV] = useState(0)
   const credsChanged = () => { passkeys.load(); setCredsV(v => v + 1) }
   const { update, importConflict, importBackup, setUnit, resetEverything: resetAll, setUser, pullState, pushState, resetDemo } = useStore()
@@ -838,7 +839,18 @@ export default function Settings({ page = null, find = null, via = null }) {
       </div>
     </>,
 
-    account: () => <>
+    account: () => SUPABASE ? <>
+      {user && <ServerSyncSection />}
+      <Section title="Conta Alter Ego">
+        <Row icon="lock" title={user?.email || user?.name || 'Sua conta'} subtitle="Treinos, rotinas e medidas sincronizados com sua conta." />
+        <Row icon="signOut" title={t('Sign out')} danger onClick={signOutHere} />
+        <Row icon="shield" title={t('Sign out everywhere')} danger onClick={signOutEverywhere} />
+      </Section>
+      <Section title="Dados e backup">
+        <Row icon="info" title="Fotos e vídeos próprios permanecem neste aparelho" subtitle="A sincronização de mídia personalizada ainda não está disponível. Exporte um backup antes de trocar de aparelho." />
+        <KeptChangesRows />
+      </Section>
+    </> : <>
       {/* The server: which one, which account, how that stands, "Sync now". A paired phone's
           Admin and Disconnect sit in the same block; a browser's account rows follow in their own. */}
       {user && !DEMO && <ServerSyncSection>

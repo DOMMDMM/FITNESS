@@ -24,6 +24,7 @@ import { loadCfAccess } from '../lib/cf-access.js'
 import { loadCoachDevice, saveCoachDevice, coachDeviceSettings } from '../lib/coach-device.js'
 import { RTL_LANGS } from '../lib/i18n-core.js'
 import { DEFAULT_TEMPLATE_ID } from '../lib/structuralBalanceTemplates.js'
+import { SUPABASE, SUPABASE_URL } from '../lib/supabase-config.js'
 
 import { WC_DEFAULT } from '../lib/workout-controls.js'
 import { sanitizeAccent } from '../lib/accent.js'
@@ -468,6 +469,7 @@ export const useStore = create((set, get) => {
   // subpath (#238) in a browser. null on a phone without one — local mode, or a pairing lost
   // under an earlier version, which kept no address.
   const serverBase = () => {
+    if (SUPABASE) return SUPABASE_URL
     if (MOBILE) return pairedBase
     try { return location.origin && location.origin !== 'null' ? location.origin + appBase().replace(/\/$/, '') : null } catch { return null }
   }
@@ -1835,11 +1837,16 @@ export const useStore = create((set, get) => {
 
     // Boot: ask the server who we are, then pull.
     async boot() {
+      // Supabase uses the normal authenticated sync flow, including on native builds.
+      // Restore the durable file only for the same signed-in owner before pulling.
+      if (SUPABASE && MOBILE) {
+        if (get().user) await restoreFromMirror({ user: get().user })
+      }
       // Mobile build: no backend by default — restore from the file mirror (the durable copy;
       // localStorage may have been evicted since the last run) and go straight in. Unless this
       // device was paired to a server ("connect to my server" mode, lib/remote.js), in which
       // case it behaves exactly like the signed-in web flow below, straight from here.
-      if (MOBILE) {
+      if (MOBILE && !SUPABASE) {
         const remote = await loadRemote()
         // Before the first request: a server behind Cloudflare Access answers nothing without it.
         await loadCfAccess({ pairedBase: remote?.mode === 'remote' ? remote.base : '' })

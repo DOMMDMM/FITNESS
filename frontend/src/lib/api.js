@@ -3,6 +3,7 @@ import { t } from './i18n-core.js'
 import { MOBILE } from './mobile.js'
 import { appBase } from './app-base.js'
 import { nativeFetch } from './capacitor-fetch.js'
+import { SUPABASE } from './supabase-config.js'
 
 export const IS_APPLE = /iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent)
 export const IS_ANDROID = /Android/.test(navigator.userAgent)
@@ -48,6 +49,7 @@ const TIMEOUT_MS = 60000
 const failure = (message, code, status) => Object.assign(new Error(message), { code, status })
 
 export async function api(path, opts) {
+  if (SUPABASE) return (await import('./supabase.js')).supabaseApi(path, opts)
   const { timeout, ...init } = opts || {}
   // A phone with no server to talk to: local mode, or a pairing that is gone. There is no
   // relative URL to fall back on here — the WebView's own origin is Capacitor's local asset
